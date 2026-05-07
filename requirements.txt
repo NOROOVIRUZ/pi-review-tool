@@ -1,0 +1,8 @@
+openpyxl
+pypdf
+xlrd
+easyocr
+pdf2image
+flask
+reportlab
+gunicorn

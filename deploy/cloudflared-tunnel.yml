@@ -1,0 +1,18 @@
+# Cloudflare Tunnel 설정
+# 1. cloudflared tunnel login
+# 2. cloudflared tunnel create pi-review
+# 3. cloudflared tunnel route dns pi-review pi-review.yourdomain.com
+# 4. 이 파일을 /etc/cloudflared/config.yml 에 복사
+# 5. sudo cloudflared service install
+
+tunnel: <YOUR_TUNNEL_ID>
+credentials-file: /home/ubuntu/.cloudflared/<YOUR_TUNNEL_ID>.json
+
+ingress:
+  - hostname: pi-review.yourdomain.com
+    service: http://127.0.0.1:5000
+    originRequest:
+      disableChunkedEncoding: true  # SSE 버퍼링 비활성화
+      connectTimeout: 30s
+      tcpKeepAlive: 30s
+  - service: http_status:404

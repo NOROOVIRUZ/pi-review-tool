@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PI 검토 툴 · Made by noroovirus</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link rel="stylesheet" href="/static/css/toss.css" />
+</head>
+<body>
+  <!-- ── 헤더 ─────────────────────────────────── -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="header-logo">
+        <div class="logo-icon"><i data-lucide="package-check"></i></div>
+        <div>
+          <div class="logo-title">PI 검토 툴</div>
+          <div class="logo-sub">PI · CI · PL 3-way 비교 분석</div>
+        </div>
+      </div>
+      <div class="header-badge">
+        <i data-lucide="user-round"></i>
+        <span>Made by noroovirus</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── 메인 ─────────────────────────────────── -->
+  <main class="main-wrap">
+
+    <!-- ① 업로드 뷰 -->
+    <section id="upload-view" class="view active">
+      <div class="section-title">
+        <i data-lucide="upload-cloud"></i>
+        <span>물류 파일 업로드</span>
+      </div>
+
+      <!-- 모드 탭 -->
+      <div class="mode-tabs">
+        <button class="mode-tab active" id="tab-zip" data-mode="zip">
+          <i data-lucide="file-archive"></i>
+          ZIP 파일
+        </button>
+        <button class="mode-tab" id="tab-folder" data-mode="folder">
+          <i data-lucide="folder-open"></i>
+          폴더
+        </button>
+      </div>
+
+      <!-- ZIP 모드 -->
+      <div id="zone-zip" class="upload-zone" id="drop-zone">
+        <div class="upload-icon-wrap">
+          <i data-lucide="file-archive" class="upload-icon"></i>
+        </div>
+        <p class="upload-title">ZIP 파일을 드래그하거나 클릭해서 선택</p>
+        <p class="upload-hint">PI PDF + 박스내용.xlsx + CI/PL.xls 포함 ZIP · 최대 100MB</p>
+        <input type="file" id="file-input" accept=".zip" hidden />
+        <button class="btn btn-outline" id="browse-zip-btn">
+          <i data-lucide="folder-open"></i>
+          ZIP 파일 선택
+        </button>
+      </div>
+
+      <!-- 폴더 모드 -->
+      <div id="zone-folder" class="upload-zone" style="display:none">
+        <div class="upload-icon-wrap">
+          <i data-lucide="folder-open" class="upload-icon"></i>
+        </div>
+        <p class="upload-title">폴더를 드래그하거나 클릭해서 선택</p>
+        <p class="upload-hint">PI PDF + 박스내용.xlsx + CI/PL.xls 가 들어있는 폴더</p>
+        <input type="file" id="folder-input" webkitdirectory multiple hidden />
+        <button class="btn btn-outline" id="browse-folder-btn">
+          <i data-lucide="folder-open"></i>
+          폴더 선택
+        </button>
+      </div>
+
+      <!-- 선택된 파일 미리보기 -->
+      <div id="file-preview" class="file-preview" style="display:none">
+        <div class="preview-inner">
+          <i data-lucide="check-circle-2" class="preview-check"></i>
+          <div>
+            <div id="preview-name" class="preview-name"></div>
+            <div id="preview-count" class="preview-hint"></div>
+          </div>
+          <button id="clear-file-btn" class="btn-icon" title="선택 취소">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <button class="btn btn-primary btn-full" id="start-btn">
+          <i data-lucide="play-circle"></i>
+          분석 시작
+        </button>
+      </div>
+
+      <div class="how-it-works">
+        <div class="how-step">
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>파일 업로드</strong>
+            <span>ZIP 또는 폴더 선택</span>
+          </div>
+        </div>
+        <div class="how-arrow"><i data-lucide="chevron-right"></i></div>
+        <div class="how-step">
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>자동 분석</strong>
+            <span>OCR 포함 3-way 비교</span>
+          </div>
+        </div>
+        <div class="how-arrow"><i data-lucide="chevron-right"></i></div>
+        <div class="how-step">
+          <div class="step-num">3</div>
+          <div class="step-text">
+            <strong>결과 다운로드</strong>
+            <span>Excel + PDF 보고서</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ② 처리 중 뷰 -->
+    <section id="progress-view" class="view">
+      <div class="section-title">
+        <div class="spinner"></div>
+        <span id="progress-title">분석 중...</span>
+      </div>
+
+      <div class="card progress-card">
+        <div class="progress-header">
+          <span id="progress-message" class="progress-msg">파일 압축 해제 중...</span>
+          <span id="progress-pct" class="progress-pct">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+        </div>
+
+        <div class="log-area" id="log-area"></div>
+      </div>
+
+      <div class="progress-tips">
+        <i data-lucide="info"></i>
+        <span>스캔 PDF가 있으면 OCR 처리로 인해 2~5분이 소요될 수 있습니다.</span>
+      </div>
+    </section>
+
+    <!-- ③ 결과 뷰 -->
+    <section id="result-view" class="view">
+      <div class="section-title success">
+        <i data-lucide="check-circle-2"></i>
+        <span>분석 완료</span>
+      </div>
+
+      <!-- 상태 집계 카드 -->
+      <div id="stats-grid" class="stats-grid"></div>
+
+      <!-- 다운로드 버튼 -->
+      <div class="download-group">
+        <a id="dl-excel" href="#" class="btn btn-primary btn-lg" download>
+          <i data-lucide="table-2"></i>
+          Excel 검토 파일 다운로드
+        </a>
+        <a id="dl-pdf" href="#" class="btn btn-secondary btn-lg" download>
+          <i data-lucide="file-text"></i>
+          PDF 보고서 다운로드
+        </a>
+      </div>
+
+      <button id="reset-btn" class="btn btn-ghost">
+        <i data-lucide="refresh-cw"></i>
+        새 파일 검토하기
+      </button>
+    </section>
+
+  </main>
+
+  <!-- ── 푸터 ─────────────────────────────────── -->
+  <footer class="app-footer">
+    <span>PI / CI / PL 검토 툴</span>
+    <span class="footer-dot">·</span>
+    <span>Made by <strong>noroovirus</strong></span>
+    <span class="footer-dot">·</span>
+    <span>OCR + 3-way 자동 비교</span>
+  </footer>
+
+  <script src="/static/js/main.js"></script>
+</body>
+</html>

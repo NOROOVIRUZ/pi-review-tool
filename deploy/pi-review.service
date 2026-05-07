@@ -1,0 +1,24 @@
+[Unit]
+Description=PI Review Tool — Flask Web App
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/pi-review-tool
+Environment=FLASK_ENV=production
+Environment=FLASK_SECRET=change-me-before-deploy
+ExecStart=/opt/pi-review-tool/.venv/bin/gunicorn \
+          --workers 1 \
+          --threads 4 \
+          --bind 127.0.0.1:5000 \
+          --timeout 600 \
+          --graceful-timeout 30 \
+          --access-logfile /var/log/pi-review/access.log \
+          --error-logfile  /var/log/pi-review/error.log \
+          app:app
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

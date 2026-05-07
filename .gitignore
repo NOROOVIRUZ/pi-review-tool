@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+jobs/
+*.zip
+static/fonts/
+.env
+poppler/
+.EasyOCR/
+.DS_Store
+Thumbs.db
