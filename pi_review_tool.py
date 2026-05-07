@@ -35,11 +35,17 @@ except ImportError:
 
 try:
     import easyocr as _easyocr
-    from pdf2image import convert_from_path as _pdf_to_images
     import numpy as _np
     HAS_OCR = True
+    try:
+        import fitz as _fitz  # pymupdf - poppler 불필요
+        HAS_PYMUPDF = True
+    except ImportError:
+        from pdf2image import convert_from_path as _pdf_to_images
+        HAS_PYMUPDF = False
 except ImportError:
     HAS_OCR = False
+    HAS_PYMUPDF = False
 
 _OCR_READER = None
 
@@ -47,11 +53,24 @@ _OCR_READER = None
 def _get_ocr_reader():
     global _OCR_READER
     if _OCR_READER is None:
-        print("  [OCR] EasyOCR 초기화 중... (첫 실행시 모델 다운로드 ~100MB)", flush=True)
-        import warnings, logging
+        import sys, warnings, logging
         warnings.filterwarnings("ignore")
         logging.getLogger("easyocr").setLevel(logging.ERROR)
-        _OCR_READER = _easyocr.Reader(["ko", "en"], gpu=False, verbose=False)
+
+        # exe 폴더에 번들 모델이 있으면 우선 사용 (인터넷 불필요)
+        base = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).parent
+        bundled = base / "easyocr_models"
+        model_dir = str(bundled) if bundled.exists() else None
+
+        if model_dir:
+            print("  [OCR] 번들 모델 로드 중...", flush=True)
+        else:
+            print("  [OCR] EasyOCR 초기화 중... (첫 실행시 모델 다운로드 ~200MB)", flush=True)
+
+        _OCR_READER = _easyocr.Reader(
+            ["ko", "en"], gpu=False, verbose=False,
+            model_storage_directory=model_dir,
+        )
     return _OCR_READER
 
 # ---------------------------------------------------------------------------
@@ -146,17 +165,27 @@ def normalize_ocr_models(pi_docs: list[PiDocument], known_models: frozenset[str]
 
 def ocr_pdf_pages(path: Path) -> list[str]:
     """EasyOCR로 PDF 각 페이지를 OCR하여 페이지별 텍스트 리스트를 반환합니다."""
-    import warnings, io
+    import warnings
     warnings.filterwarnings("ignore")
     reader = _get_ocr_reader()
-    page_images = _pdf_to_images(str(path), dpi=200)
+
+    if HAS_PYMUPDF:
+        doc = _fitz.open(str(path))
+        page_arrays = []
+        for page in doc:
+            mat = _fitz.Matrix(200 / 72, 200 / 72)  # 200 DPI
+            pix = page.get_pixmap(matrix=mat, colorspace=_fitz.csRGB)
+            arr = _np.frombuffer(pix.samples, dtype=_np.uint8).reshape(pix.height, pix.width, 3)
+            page_arrays.append(arr)
+        doc.close()
+    else:
+        page_arrays = [_np.array(img) for img in _pdf_to_images(str(path), dpi=200)]
+
     page_texts: list[str] = []
-    for page_img in page_images:
-        img = _np.array(page_img)
+    for img in page_arrays:
         results = reader.readtext(img, detail=0, paragraph=False)
         lines = [ln.strip() for ln in results if len(ln.strip()) >= 2]
-        raw = "\n".join(lines)
-        page_texts.append(_fix_ocr_price_text(raw))
+        page_texts.append(_fix_ocr_price_text("\n".join(lines)))
     return page_texts
 
 

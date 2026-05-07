@@ -25,17 +25,43 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install openpyxl pypdf xlrd pyinstaller
+          pip install openpyxl pypdf xlrd pymupdf easyocr pyinstaller
 
-      - name: Build EXE
+      - name: Build EXE (onedir - OCR 포함)
         run: |
-          pyinstaller --onefile --name pi-review-tool --collect-all openpyxl --exclude-module easyocr --exclude-module pdf2image --exclude-module torch --exclude-module torchvision pi_review_tool.py
+          pyinstaller --onedir --name pi-review-tool `
+            --collect-all openpyxl `
+            --collect-all easyocr `
+            --collect-all torch `
+            --hidden-import pypdf `
+            --hidden-import xlrd `
+            pi_review_tool.py
+
+      - name: Pre-download OCR models into dist
+        run: |
+          python -c "
+          import easyocr, shutil, os
+          from pathlib import Path
+          print('OCR 모델 다운로드 중...')
+          reader = easyocr.Reader(['ko', 'en'], gpu=False, verbose=False)
+          model_src = Path.home() / '.EasyOCR' / 'model'
+          model_dst = Path('dist/pi-review-tool/easyocr_models')
+          model_dst.mkdir(parents=True, exist_ok=True)
+          for f in model_src.glob('*.pth'):
+              shutil.copy(f, model_dst / f.name)
+              print(f'  복사: {f.name}')
+          print('완료')
+          "
+
+      - name: Zip output folder
+        run: |
+          Compress-Archive -Path dist/pi-review-tool -DestinationPath dist/pi-review-tool-windows.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: pi-review-tool-windows
-          path: dist/pi-review-tool.exe
+          path: dist/pi-review-tool-windows.zip
           retention-days: 30
 
       - name: Create Release
@@ -44,12 +70,18 @@ jobs:
           tag_name: build-${{ github.run_number }}
           name: "PI Review Tool v${{ github.run_number }}"
           body: |
-            ## PI / CI / PL 3-way 검토 툴
+            ## PI / CI / PL 3-way 검토 툴 (Windows)
+
+            **설치 방법:**
+            1. `pi-review-tool-windows.zip` 다운로드
+            2. 원하는 폴더에 압축 해제
+            3. `pi-review-tool/pi-review-tool.exe` 실행
 
             **사용법:**
-            1. `pi-review-tool.exe` 더블클릭
-            2. 파일 선택 창에서 `물류.zip` 선택
-            3. 완료 후 결과 폴더 자동 오픈
+            - 더블클릭 → 파일 선택 창 → `물류.zip` 선택
+            - 완료 후 결과 폴더 자동 오픈
 
-            > ⚠️ OCR 기능 미포함 (텍스트 추출 가능 PDF만 지원)
-          files: dist/pi-review-tool.exe
+            **포함 기능:**
+            - OCR 완전 포함 (스캔 PDF 지원, 모델 번들 포함)
+            - 인터넷 연결 불필요
+          files: dist/pi-review-tool-windows.zip
