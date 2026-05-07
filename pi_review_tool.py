@@ -1837,6 +1837,35 @@ def run(input_path: Path, output_dir: Path, keep_json: bool = False) -> Path:
             temp_dir.cleanup()
 
 
+def _pick_file_dialog() -> Path | None:
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        root.lift()
+        selected = filedialog.askopenfilename(
+            title="물류 ZIP 파일 선택",
+            filetypes=[("ZIP 파일", "*.zip"), ("모든 파일", "*.*")],
+        )
+        root.destroy()
+        return Path(selected) if selected else None
+    except Exception:
+        return None
+
+
+def _open_folder(path: Path) -> None:
+    import subprocess, sys
+    try:
+        if sys.platform == "win32":
+            import os
+            os.startfile(str(path))
+        elif sys.platform == "darwin":
+            subprocess.run(["open", str(path)], check=False)
+    except Exception:
+        pass
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="PI / CI / PL을 PI 기준으로 비교하여 검토 결과 엑셀을 생성합니다."
@@ -1844,12 +1873,12 @@ def main() -> int:
     parser.add_argument(
         "input",
         nargs="?",
-        default="/Users/noroovirus/Downloads/물류.zip",
-        help="입력 ZIP 또는 압축 해제 폴더 경로",
+        default=None,
+        help="입력 ZIP 또는 압축 해제 폴더 경로 (생략 시 파일 선택 창 열림)",
     )
     parser.add_argument(
         "-o", "--output-dir",
-        default="/Users/noroovirus/Downloads/new",
+        default=str(Path.home() / "Downloads" / "pi_review_output"),
         help="결과 엑셀을 저장할 폴더",
     )
     parser.add_argument(
@@ -1858,8 +1887,18 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    output_path = run(Path(args.input), Path(args.output_dir), keep_json=args.debug_json)
+    if args.input:
+        input_path = Path(args.input)
+    else:
+        input_path = _pick_file_dialog()
+        if not input_path:
+            print("파일이 선택되지 않았습니다.")
+            return 1
+
+    output_dir = Path(args.output_dir)
+    output_path = run(input_path, output_dir, keep_json=args.debug_json)
     print(f"\n✅ 완료: {output_path}")
+    _open_folder(output_dir)
     return 0
 
 

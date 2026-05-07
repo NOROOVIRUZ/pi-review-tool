@@ -1,0 +1,55 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'pi_review_tool.py'
+      - '.github/workflows/build-exe.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install openpyxl pypdf xlrd pyinstaller
+
+      - name: Build EXE
+        run: |
+          pyinstaller --onefile --name pi-review-tool --collect-all openpyxl --exclude-module easyocr --exclude-module pdf2image --exclude-module torch --exclude-module torchvision pi_review_tool.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pi-review-tool-windows
+          path: dist/pi-review-tool.exe
+          retention-days: 30
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: "PI Review Tool v${{ github.run_number }}"
+          body: |
+            ## PI / CI / PL 3-way 검토 툴
+
+            **사용법:**
+            1. `pi-review-tool.exe` 더블클릭
+            2. 파일 선택 창에서 `물류.zip` 선택
+            3. 완료 후 결과 폴더 자동 오픈
+
+            > ⚠️ OCR 기능 미포함 (텍스트 추출 가능 PDF만 지원)
+          files: dist/pi-review-tool.exe
